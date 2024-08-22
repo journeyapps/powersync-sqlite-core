@@ -2,6 +2,8 @@ on:
   push:
     tags:
       - "*"
+  pull_request:
+  workflow_dispatch:
 name: "windows"
 jobs:
   build_windows:
@@ -21,4 +23,42 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           file-name: powersync_x64.dll
+          tag: ${{ github.ref_name }}
+
+  build_aarch64:
+    name: Building Windows aarch64
+    runs-on: windows-arm64
+    steps:
+      - name: Install Git
+        run: |
+          Set-ExecutionPolicy Bypass -Scope Process -Force
+          [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+          iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+          choco install -y --no-progress git
+          echo "C:\Program Files\Git\cmd" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          choco install visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.MSBuildTools;includeRecommended --add Microsoft.VisualStudio.Workload.VCTools;includeRecommended --quiet" -y
+
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Build binaries
+        run: |
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+          Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+
+          scoop install rustup
+
+          rustup toolchain install nightly-2024-05-18-aarch64-pc-windows-msvc
+          rustup component add rust-src --toolchain nightly-2024-05-18-aarch64-pc-windows-msvc
+          rustup target add aarch64-pc-windows-msvc
+          cargo build -p powersync_loadable --release
+          mv "target/release/powersync.dll" "powersync_aarch64.dll"
+
+      - name: Upload binary
+        if: github.event_name == 'workflow_dispatch'
+        uses: ./.github/actions/upload
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          file-name: powersync_aarch64.so
           tag: ${{ github.ref_name }}

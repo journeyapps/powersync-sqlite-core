@@ -180,6 +180,25 @@ jobs:
           file-name: powersync_x64.dll
           tag: ${{ needs.draft_release.outputs.tag }}
 
+  publish_windows_aarch64:
+    name: Publish Windows aarch64
+    needs: [draft_release]
+    runs-on: windows-arm64
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Build binary
+        run: bash tool/build_windows.sh aarch64
+
+      - name: Upload binary
+        uses: ./.github/actions/upload
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          file-name: powersync_aarch64.dll
+          tag: ${{ needs.draft_release.outputs.tag }}
+
   publish_macOS:
     name: Publish macOS
     needs: [draft_release]
