@@ -17,6 +17,11 @@ strip = true
 opt-level = "z"
 lto = true
 
+[profile.release_apple]
+inherits = "release"
+strip = false
+debug = true
+
 [profile.wasm]
 inherits = "release"
 
